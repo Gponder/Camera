@@ -5,6 +5,8 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.hardware.Camera;
+import android.media.MediaRecorder;
+import android.os.Environment;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
@@ -13,6 +15,9 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.concurrent.Executor;
 
 /**
  * Created by Administrator on 2016/4/13.
@@ -20,6 +25,10 @@ import java.io.IOException;
 public class MySurfaceView extends SurfaceView implements SurfaceHolder.Callback{
     SurfaceHolder surfaceHolder;
     Camera camera;
+    MediaRecorder mediaRecorder;
+    private File videoFile;
+    private boolean isPreview;
+
     public MySurfaceView(Context context) {
         super(context);
         surfaceHolder = getHolder();
@@ -41,11 +50,13 @@ public class MySurfaceView extends SurfaceView implements SurfaceHolder.Callback
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
         camera.startPreview();
+        isPreview = true;
     }
 
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) {
         camera.stopPreview();
+        isPreview = false;
         camera.release();
         camera = null;
     }
@@ -92,6 +103,73 @@ public class MySurfaceView extends SurfaceView implements SurfaceHolder.Callback
         }
     }
 
+    public void tackVideo(){
+        if (isPreview) {
+            camera.stopPreview();
+            isPreview = false;
+            camera.release();
+            camera = null;
+        }
+        if (mediaRecorder == null){
+            mediaRecorder = new MediaRecorder();
+        }else{
+            mediaRecorder.reset();
+        }
+        mediaRecorder.setPreviewDisplay(surfaceHolder.getSurface());
+        mediaRecorder.setVideoSource(MediaRecorder.VideoSource.CAMERA);
+        mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+        mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
+        mediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
+        mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
+        mediaRecorder.setVideoSize(320,240);
+        mediaRecorder.setVideoFrameRate(30);
+        try {
+            File mRecVedioPath = new File(Environment.getExternalStorageDirectory()
+                    .getAbsolutePath() + "/hfdatabase/video/temp/");
+            if (!mRecVedioPath.exists()) {
+                mRecVedioPath.mkdirs();
+            }
+            videoFile = File.createTempFile("video",".3gp",mRecVedioPath);
+        }catch (Exception e){
+
+        }
+        mediaRecorder.setOutputFile(videoFile.getAbsolutePath());
+        try {
+            mediaRecorder.prepare();
+//            Timer
+            mediaRecorder.start();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void tackVideoStop(){
+        if (mediaRecorder==null){
+            return;
+        }
+        mediaRecorder.stop();
+//        Timer
+        mediaRecorder.release();
+        mediaRecorder=null;
+        videoRename();
+    }
+
+    private void videoRename() {
+        String path = Environment.getExternalStorageDirectory()
+                .getAbsolutePath()
+                + "/hfdatabase/video/"
+                + String.valueOf("id+who") + "/";
+        String fileName = new SimpleDateFormat("yyyyMMddHHmmss")
+                .format(new Date()) + ".3gp";
+        File out = new File(path);
+        if (!out.exists()) {
+            out.mkdirs();
+        }
+        out = new File(path, fileName);
+        if (videoFile.exists())
+            videoFile.renameTo(out);
+    }
+
     public void tackPicture(){
         boolean canAutoFocus = getContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_AUTOFOCUS);
         if (canAutoFocus){
@@ -108,5 +186,6 @@ public class MySurfaceView extends SurfaceView implements SurfaceHolder.Callback
 
     public void voerTack(){
         camera.startPreview();
+        isPreview = true;
     }
 }
